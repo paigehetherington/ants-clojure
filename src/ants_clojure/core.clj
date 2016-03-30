@@ -17,13 +17,30 @@
 (defn create-ants []
   (for [i (range ant-count)]
     {:x (rand-int width) ; rand-int = number between 0 and width -1 (799)
-     :y (rand-int height)}))
+     :y (rand-int height)
+     :color (Color/BLACK)}))
+
+(defn aggravate-ant [ant]
+  (Thread/sleep 1)
+  (let [ant-x (:x ant)
+        ant-y (:y ant)
+        near-ants (count (filter (fn [other-ant]
+                                   (and (< (Math/abs (- ant-x (:x other-ant))) 10)
+                                    (< (Math/abs (- ant-y (:y other-ant))) 10))) 
+                             @ants))]
+    (if (> near-ants 1)
+      (assoc ant
+        :color Color/RED)
+      (assoc ant
+        :color Color/BLACK))))
+      
+                
 
 
 (defn draw-ants! [context] ; ! stands for side effect (drawing to screen, playing sound, changing mutable value)
   (.clearRect context 0 0 width height) ; clears frame
   (doseq [ant @ants]
-    (.setFill context Color/BLACK) ; context.setFill(Color.BLACK) in java
+    (.setFill context (:color ant)) ; context.setFill(Color.BLACK) in java
     (.fillOval context (:x ant) (:y ant) 5 5)))
 
 (defn random-step []
@@ -53,7 +70,7 @@
                 (handle [now] ; long iwth current timestamp
                   (.setText fps-label (str (fps now)))
                   (reset! last-timestamp now) ;updates
-                  (reset! ants (pmap move-ant @ants)) ; maps move-ant fxn on all ants and reset atom, pmap for parralel
+                  (reset! ants (doall (pmap aggravate-ant (pmap move-ant (deref ants))))) ; maps move-ant fxn on all ants and reset atom, pmap for parralel
                   (draw-ants! context)))]
     (reset! ants (create-ants))
     (.setTitle stage "Ants")
